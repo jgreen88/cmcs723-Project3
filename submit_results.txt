@@ -1,0 +1,5 @@
+P3.112426873.2016-12-4-19-47-42 (password=TB8WN5u7e8spBod0)
+
+with excluding most common english words:
+    sjp_baseline 	0.603 	0.694 	0.804 	0.806 	0.214 	0.624
+
