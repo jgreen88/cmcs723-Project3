@@ -1,0 +1,123 @@
+\documentclass{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumerate}
+\usepackage{amssymb}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\lhead{Green, Sutor, Kankanahalli}
+\rhead{CMCS723-Project3}
+
+
+
+\begin{document}\thispagestyle{empty}
+\noindent
+\textbf{Jeffrey Green, Peter Sutor, Sri Kankanahalli\\CMCS723, Project 3\\December 12, 2016}\\
+
+\section{Baseline}
+For our baseline, we computed sentence embeddings by averaging the word embeddings for each individual token in the sentence. In order to do this, we performed the following. First, we preprocessed the data by splitting each sentence on white space. We then tokenized the sentences, including punctuation as its own token, and converting to lowercase. To implement the baseline, word embeddings were taken from `paragram-phrase.XXL.txt' where possible, and from `pragram\_300\_sl999.txt' when needed (i.e. when a token did not appear in the former embeddings set). Sentence-level embeddings were computed by averaging these embeddings for each token in the sentence. Sentence similarity was determined by computing the cosine similarity of the two sentence embeddings.
+
+This baseline method had a 73\% accuracy. An error analysis revealed the following two categories of items on which our model was successful and four categories on which our model was unsuccessful.\\
+
+
+\noindent\textbf{Items on which the baseline was successful:}
+\begin{enumerate}
+	\item Examples with only slight variation in word order, such as:
+	
+	Pair 1, MSRvid.txt\\
+	`A woman and man are dancing in the rain.'\\
+	`A man and woman are dancing in the rain.'\\
+	 \begin{tabular}{lll}
+		&	Correct score: & 1.0000 (5.000/5)\\
+		& Predicted score: & 0.9860 (4.930/5)\\
+	\end{tabular}
+
+%	In these two sentences, the only differences are that ``man" and ``woman" are switched within a conjoined NP, and the second sentence is missing a ``the". The order of elements in a conjoined NP does not affect the meaning. Because of this, human annotators will rank a pair of sentences that only has this difference as small. The baseline successfully matches that prediction because it does not take word order into account. Because the sentences have (nearly) all the same words, they will have similar sentence-level embeddings, and therefore a high cosine similarity. 
+	
+	\item Examples with similar meaning and phrasing, but with some details omitted from one sentence:
+	
+	Pair 631\\
+	`Ballmer has been vocal in the past warning that Linux is a threat to Microsoft.'\\
+	`In the memo, Ballmer reiterated the open-source threat to Microsoft.'\\
+	 \begin{tabular}{lll}
+		&	Correct score: & 0.6000 (3.000/5)\\
+		& Predicted score: & 0.5919 (2.9595/5)\\
+	\end{tabular}
+
+%	These two sentences convey a similar meaning. However, the first has more details than the second. Human annotators would therefore judge these sentences as fairly similar, but not as similar as those in the last example, which convey the exact same content. The baseline model does well because there are enough overlapping words between the two sentences to create similar sentence embeddings. But since there are details in one that are not in the other, the embeddings will not be identical, and the score will be somewhat lowered.\\
+	
+\end{enumerate}
+
+\vspace{.5cm}
+\noindent\textbf{Items on which the baseline was unsuccessful:}
+\begin{enumerate}
+	\item Sentences with many overlapping words but different arguments:
+	
+	Pair 5, MSRpar.txt\\
+	`Amgen shares gained 93 cents, or 1.45 percent, to \$65.05 in afternoon trading on Nasdaq.'\\
+	`Shares of Allergan were up 14 cents at \$78.40 in late trading on the New York Stock Exchange.'\\
+		 \begin{tabular}{lll}
+		&	Correct score: & 0.2666 (1.333/5)\\
+		& Predicted score: & 0.5919 (3.529/5)\\
+	\end{tabular}
+
+	These two sentences have many overlapping words. Because of this, their averaged embeddings will be fairly similar. However, even though they have overlapping words, the arguments of the verbs are different. Because of this, human annotators will rate the sentences as having low semantic similarity; they are about different companies. But because the model has no knowledge of argument structure or of context, this important difference loses weight in light of the number of overlapping tokens.
+	
+	\item Examples where one has more telegraphic speech:
+	
+	Pair 16, MSRpar.txt\\
+	`The last time the survey was conducted, in 1995, those numbers matched.'\\
+	`In 1995, the last survey, those numbers were equal.'\\
+	 \begin{tabular}{lll}
+		&	Correct score: & 1.000 (5.000/5)\\
+		& Predicted score: & 0.7746 (3.873/5)\\
+	\end{tabular}
+	
+	These two sentences are judged by humans to mean exactly the same thing. They differ in that the second is more telegraphic than the former (and the verbs are different, but synonymous). The baseline model will not judge these to mean exactly the same thing, because the longer version has many more words that will go into the average embedding.
+	
+	\item Sentences with some overlapping words, but different verbs:
+	
+	Pair 24, MSRpar.txt\\
+	`Hilsenrath and Klarman each were indicted on three counts of securities fraud.'\\
+	`Klarman was charged with 16 counts of wire fraud.'\\
+	 \begin{tabular}{lll}
+	&	Correct score: & 0.2800 (1.400/5)\\
+	& Predicted score: & 0.6173 (3.086/5)\\
+	\end{tabular}	
+	
+	This type of error was similar to the first category. Again there are many overlapping words, which leads to somewhat similar sentence embeddings. But the sentences differ in key ways. As with the first error type, there may be differences in the arguments. But here, crucially, the verb also conveys a very different meaning that may stand out to human annotators, but which may not have a big effect on the averaged sentence embedding.
+	
+	\item Very short sentences that only share very common words:
+	
+	Pair 373, MSRvid.txt\\
+	`A man is bowling.'\\
+	`A kitten is walking.'\\
+	 \begin{tabular}{lll}
+	&	Correct score: & 0.0000 (0.000/5)\\
+	& Predicted score: & 0.4537 (2.268/5)\\
+	\end{tabular}	
+
+	These sentences have a large proportion of overlapping words (in this particular example, half of the words overlap). This would lead to relatively similar sentence embeddings. But the overlapping words are functional, and do not contribute much to the meaning. Because of this, a human would base their judgment much more on the content words (which don't match). 
+\end{enumerate}
+
+
+
+\section{Our implementation}
+\subsection{What we did}
+In our implementation of the semantic textual similarity task, we used a neural network%DID WE?
+and word2vec embeddings from the Google corpus. We first preprocessed our data to remove English stopwords (from the NLTK corpus). This was expected to help with our category 4 errors described above. Because they do not contribute as much to the meaning of the sentence as content words, excluding them from averaged sentence embeddings should induce improvement. In addition, we again tokenized periods, but removed commas and split words with apostrophes into two tokens, placing the apostrophe on the second token, matching what is found in the Google word2vec corpus.
+
+
+\subsection{Results}
+%INCLUDE ERROR ANALYSIS
+
+
+\subsection{What more we could do}
+If we had more time, we would include in our model semantic role labels. This would help with errors where the sentences have similar words but different phrase structure leading to different interpretations. We also thought about doing a deep-learning network.%WHY???
+
+%LSTMs, anything else??
+
+
+\section{Crosslingual model}
+
+
+\end{document}
