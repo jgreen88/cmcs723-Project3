@@ -1,0 +1,96 @@
+============================================
+ SUCCESS CATEGORIES
+============================================
+
+Word switching
+
+EXAMPLE
+Pair 1, MSRvid.txt
+'A woman and man are dancing in the rain.'
+'A man and woman are dancing in rain.'
+    Correct score:   1.0000 (5.000 / 5)
+    Predicted score: 0.9860 (4.930 / 5)
+
+Why?
+The only differences between the two sentences are that "man" and "woman" are switched,
+and the word "the" is absent in the second -- so this is a very easy category for our
+baseline to predict. (Conversely, unrelated sentences with few overlapping words are
+also fairly easy for this baseline.)
+
+--------------------------------------------
+
+Similar meaning and phrasing, omitted details
+
+EXAMPLE
+Pair 631,
+'Ballmer has been vocal in the past warning that Linux is a threat to Microsoft.'
+'In the memo, Ballmer reiterated the open-source threat to Microsoft.'
+    Correct score:   0.6000 (3.0000 / 5)
+    Predicted score: 0.5919 (2.9595 / 5)
+
+Why?
+Similar justification to the above category -- the most "defining" words in the sentence
+are preserved, and the model is therefore able to accurately predict similarity.
+
+============================================
+ ERROR CATEGORIES
+============================================ 
+
+Shared words, different context
+
+EXAMPLE
+Pair 5, MSRpar.txt
+'Amgen shares gained 93 cents, or 1.45 percent, to $65.05 in afternoon trading on Nasdaq.'
+'Shares of Allergan were up 14 cents at $78.40 in late trading on the New York Stock Exchange.'
+    Correct score:   0.2666 (1.333 / 5)
+    Predicted score: 0.7059 (3.529 / 5)
+
+Why?
+Model treats words as independent, and so because many words overlap between these two
+examples, it assumes they are similar (since it has no context knowledge).
+
+--------------------------------------------
+
+Failure to recognize synonyms
+
+EXAMPLE
+Pair 16, MSRpar.txt
+'The last time the survey was conducted, in 1995, those numbers matched.'
+'In 1995, the last survey, those numbers were equal.'
+    Correct score:   1.0000 (5.000 / 5)
+    Predicted score: 0.7746 (3.873 / 5)
+
+Why?
+Model . 
+
+--------------------------------------------
+
+Failure to consider phrase structure
+
+EXAMPLE
+Pair 24, MSRpar.txt
+'Hilsenrath and Klarman each were indicted on three counts of securities fraud.'
+'Klarman was charged with 16 counts of wire fraud.'
+    Correct score:   0.2800 (1.400 / 5)
+    Predicted score: 0.6173 (3.086 / 5)
+
+Why?
+Model has no sense of phrase structure, so it considers "securities fraud" and "wire fraud"
+connected just because they contain the word fraud (although they are different things).
+
+--------------------------------------------
+
+Confusion by overlapping common words
+
+EXAMPLE
+Pair 373, MSRvid.txt
+'A man is bowling.'
+'A kitten is walking.'
+    Correct score:   0.0000 (0.000 / 5)
+    Predicted score: 0.4537 (2.268 / 5)
+
+Why?
+The model has no way of inferring the sentence's "word context", so it is easily confused by
+examples like this where the structure of the sentence is similar but what the sentences
+convey are completely different.
+

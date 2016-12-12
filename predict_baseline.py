@@ -1,55 +1,61 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.stats.stats import pearsonr
+import nltk
 import sys
 
-# exclude the top 10 most common English words from contributing
-# to the embedding
-#EMBED_EXCLUDE = ["the", "be", "to", "of", "and", "a", "in"]
+PARAGRAM_PHRASE_FNAME = "paragram-phrase-XXL.txt"
+PARAGRAM_SL999_FNAME = "paragram_300_sl999.txt"
 
-# key for unknown tokens
-UNKNOWN_KEY = 'UUUNKKK'
-
-
-
-def load_paragram_embeddings():
-    # load paragram phrase embeddings
+def load_embeddings(fname):
     embeddings = {}
-
-    # we create a dictionary: word => [embedding as numpy array]
-    with open("paragram-phrase-XXL.txt", "r") as ins:
-        for line in ins:
+    
+    file = open(fname)
+    
+    while 1:
+        lines = file.readlines(100000)
+        if not lines:
+            break
+        for line in lines:
             spl = line.split(" ")
             
             word = spl[0]
             embed = np.array([float(i) for i in spl[1:]])
             embeddings[word] = embed
-            
-    return embeddings
-
-
-
-def generate_sentence_embedding(snt, word_embeds):
-    # process period, apostrophe, comma tokens
-    #     (leads to some improvement, especially on MSRvid)
-    p_snt = snt.lower()
-    p_snt = p_snt.replace(".", " . ")
-    p_snt = p_snt.replace(",", "")
-    p_snt = p_snt.replace("'", " '")
     
-    tokens = p_snt.split(" ")
+    file.close()
+    
+    return embeddings
+   
+    
+    
+phrase_embed = load_embeddings(PARAGRAM_PHRASE_FNAME)
+#print "Phrase embeddings loaded."
+sl999_embed = load_embeddings(PARAGRAM_SL999_FNAME)
+#print "SL999 embeddings loaded."
+embedding_set = [phrase_embed, sl999_embed]
+
+# key for unknown tokens (in Paragram Phrase XXL)
+UNKNOWN_KEY = 'UUUNKKK'
+UNKNOWN_EMBED = phrase_embed[UNKNOWN_KEY]
+
+
+
+def generate_sentence_embedding(snt, embeddings):
+    # replace period, apostrophe, comma tokens
+    p_snt = snt.lower()
+    tokens = nltk.wordpunct_tokenize(p_snt)
     
     embed = None
     
-    # compute average embedding over all tokens
     for tk in tokens:
-        # exclude common words
-        #if (tk in EMBED_EXCLUDE): continue
-            
-        if (tk in word_embeds):
-            w_embed = np.copy(word_embeds[tk])
-        else:
-            w_embed = np.copy(word_embeds[UNKNOWN_KEY])
+        w_embed = None
+        for e in embeddings:
+            if (tk in e):
+                w_embed = np.copy(e[tk])
+                break
+        if (w_embed is None):
+            w_embed = np.copy(UNKNOWN_EMBED)
         
         if (embed is None):
             embed = np.copy(w_embed)
@@ -62,16 +68,40 @@ def generate_sentence_embedding(snt, word_embeds):
 
 
 
+def compute_scores(inp_fname, out_fname):
+    inp_file = open(inp_fname)
+    inp_content = inp_file.readlines()
+    inp_file.close()
+
+    calculated_similarity = []
+    for i in xrange(0, len(inp_content)):
+        snts = inp_content[i].split("\t")
+
+        embed_s1 = generate_sentence_embedding(snts[0], embedding_set)
+        embed_s1 = embed_s1.reshape(1, -1)
+
+        embed_s2 = generate_sentence_embedding(snts[1], embedding_set)
+        embed_s2 = embed_s2.reshape(1, -1)
+
+        calculated_similarity.append(cosine_similarity(embed_s1, embed_s2))
+
+    calculated_similarity = np.array(calculated_similarity)
+    calculated_similarity = calculated_similarity.flatten()
+
+    np.savetxt(out_fname, calculated_similarity)
+
+
+
+
+
+
+
 if (len(sys.argv) != 3):
     print "Wrong number of arguments!"
     exit()
 
 inp_fname = sys.argv[1]
 out_fname = sys.argv[2]
-
-
-
-paragram_embeddings = load_paragram_embeddings()
 
 inp_file = open(inp_fname)
 inp_content = inp_file.readlines()
@@ -81,10 +111,10 @@ calculated_similarity = []
 for i in xrange(0, len(inp_content)):
     snts = inp_content[i].split("\t")
     
-    embed_s1 = generate_sentence_embedding(snts[0], paragram_embeddings)
+    embed_s1 = generate_sentence_embedding(snts[0], embedding_set)
     embed_s1 = embed_s1.reshape(1, -1)
     
-    embed_s2 = generate_sentence_embedding(snts[1], paragram_embeddings)
+    embed_s2 = generate_sentence_embedding(snts[1], embedding_set)
     embed_s2 = embed_s2.reshape(1, -1)
     
     calculated_similarity.append(cosine_similarity(embed_s1, embed_s2))
