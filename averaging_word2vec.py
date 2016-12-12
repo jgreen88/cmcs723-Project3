@@ -1,7 +1,5 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
-from collections import defaultdict
 
 
 class AverageVectors(object):
