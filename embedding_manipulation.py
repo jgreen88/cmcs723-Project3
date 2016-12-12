@@ -1,6 +1,7 @@
 import numpy as np
+import nltk
 from sklearn.metrics.pairwise import cosine_similarity
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, wordnet
 
 
 class EmbeddingManipulation(object):
@@ -26,15 +27,28 @@ class EmbeddingManipulation(object):
 
         return embeddings
 
-    def generate_sentence_embedding(self, snt, word_embeds):
+    def generate_sentence_embedding(self, snt, word_embeds, stop_list=True):
         # process period, apostrophe, comma tokens
         #     (leads to some improvement, especially on MSRvid)
         p_snt = snt.lower()
         p_snt = p_snt.replace(".", " . ")
         p_snt = p_snt.replace(",", "")
         p_snt = p_snt.replace("'", " '")
+        p_snt = p_snt.replace(":", "")
+        p_snt = p_snt.replace(";", "")
+        p_snt = p_snt.replace("?", " QUESTION_TOKEN")
+        p_snt = p_snt.replace("&", " and ")
+        #p_snt = p_snt.replace("(", "")
+        #p_snt = p_snt.replace(")", "")
+        #p_snt = p_snt.replace("$", "dollars ")
 
         tokens = p_snt.split(" ")
+
+        pos_tags_raw = nltk.pos_tag(nltk.tokenize.word_tokenize(p_snt.decode("utf-8")))
+        pos_tags = []
+
+        for tag in pos_tags_raw:
+            pos_tags.append((tag[0], self.get_wordnet_pos(tag[1])))
 
         embed = None
 
@@ -48,10 +62,13 @@ class EmbeddingManipulation(object):
             #    pass
 
             # exclude common words
-            if (tk in self._EMBED_EXCLUDE): continue
+            if (stop_list and tk in self._EMBED_EXCLUDE): continue
 
             if (tk in word_embeds):
                 w_embed = np.copy(word_embeds[tk])
+            elif tk.isalpha() and wordnet.synsets(tk, pos=self.get_pos(tk, pos_tags), lang='eng'):
+                w_embed = self.find_synonyms(wordnet.synsets(tk, pos=self.get_pos(tk, pos_tags), lang='eng'),
+                                             word_embeds)
             else:
                 w_embed = np.copy(word_embeds[self._UNKNOWN_KEY])
 
@@ -60,7 +77,10 @@ class EmbeddingManipulation(object):
             else:
                 embed += w_embed
 
-        embed /= float(len(tokens))
+        if embed == None:
+            embed = self.generate_sentence_embedding(snt, word_embeds, stop_list=False)
+        else:
+            embed /= float(len(tokens))
 
         return embed
 
@@ -84,6 +104,32 @@ class EmbeddingManipulation(object):
         calculated_similarity = calculated_similarity.flatten()
 
         return calculated_similarity
+
+    def find_synonyms(self, synonyms_set, word_embeds):
+        for synset in synonyms_set:
+            for lemma in synset.lemmas():
+                if lemma.name() in word_embeds:
+                    return np.copy(word_embeds[lemma.name()])
+
+        return np.copy(word_embeds[self._UNKNOWN_KEY])
+
+    def get_wordnet_pos(self, treebank_tag):
+
+        if treebank_tag.startswith('J'):
+            return wordnet.ADJ
+        elif treebank_tag.startswith('V'):
+            return wordnet.VERB
+        elif treebank_tag.startswith('N'):
+            return wordnet.NOUN
+        elif treebank_tag.startswith('R'):
+            return wordnet.ADV
+        else:
+            return ''
+
+    def get_pos(self, tk, pos_tags):
+        for tag in pos_tags:
+            if tag[0] == tk:
+                return tag[1]
 
     @staticmethod
     def num2words(num, join=True):
