@@ -44,7 +44,7 @@ UNKNOWN_EMBED = phrase_embed[UNKNOWN_KEY]
 def generate_sentence_embedding(snt, embeddings):
     # replace period, apostrophe, comma tokens
     p_snt = snt.lower()
-    tokens = nltk.wordpunct_tokenize(p_snt)
+    tokens = nltk.word_tokenize(p_snt.decode('utf8'))
     
     embed = None
     
